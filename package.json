@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "android-m2": "./scripts/run-android-m2.sh",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
