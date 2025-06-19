@@ -1,0 +1,60 @@
+flowchart TD
+    A[User Opens App] --> B[Chat Interface Loads]
+    B --> C{New Request?}
+    
+    C -->|Yes| D[Upload Product Image/Text]
+    C -->|No| E[View Previous Requests]
+    
+    D --> F[AI Analyzes Product]
+    F --> G[Chatbot Asks Clarifying Questions]
+    G --> H{All Details Clear?}
+    
+    H -->|No| I[Ask More Questions]
+    I --> G
+    H -->|Yes| J[Generate Product Specification]
+    
+    J --> K[Send to Admin Panel]
+    K --> L[Admin Assigns to Agent]
+    L --> M[Agent Contacts Local Stores]
+    
+    M --> N{Product Available?}
+    N -->|No| O[Try More Stores]
+    O --> P{More Stores to Try?}
+    P -->|Yes| M
+    P -->|No| Q[Mark as Not Found]
+    
+    N -->|Yes| R[Get Price & Availability]
+    R --> S[Admin Updates Status]
+    S --> T[Send Details to User]
+    
+    T --> U{User Accepts?}
+    U -->|No| V[Request Cancelled]
+    U -->|Yes| W[Generate Payment Link]
+    
+    W --> X[Send Payment to User]
+    X --> Y[User Makes Payment]
+    Y --> Z{Payment Successful?}
+    
+    Z -->|No| AA[Payment Failed - Retry]
+    AA --> X
+    Z -->|Yes| BB[Payment Confirmed]
+    
+    BB --> CC[Admin Arranges Delivery]
+    CC --> DD[Product Delivered]
+    DD --> EE[Mark Order Complete]
+    
+    Q --> FF[Notify User - Not Found]
+    V --> GG[Update Status - Cancelled]
+    E --> HH[Show Request History]
+    
+    FF --> II[Ask for Feedback]
+    EE --> JJ[Request Rating/Review]
+    GG --> KK[Show Cancellation Reason]
+    
+    style A fill:#e1f5fe
+    style D fill:#f3e5f5
+    style J fill:#e8f5e8
+    style BB fill:#e8f5e8
+    style DD fill:#4caf50,color:#fff
+    style Q fill:#ffebee
+    style FF fill:#ffebee
