@@ -42,18 +42,9 @@ const WebComponent = () => {
 
   const handleShouldStartLoadWithRequest = event => {
     console.log('Loading URL:', event.url);
-    const allowedDomain = 'traderbros.app';
-
-    if (
-      event.url.startsWith(`https://${allowedDomain}`) ||
-      event.url.startsWith(`http://${allowedDomain}`)
-    ) {
-      return true;
-    } else {
-      Linking.openURL(event.url);
-      return false;
-    }
+    return true; // Always allow loading inside WebView
   };
+  
 
   const handleNavigationStateChange = navState => {
     console.log('Navigation state:', navState);
