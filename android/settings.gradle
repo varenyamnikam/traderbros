@@ -1,6 +1,28 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
-plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+pluginManagement {
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+}
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    ex.autolinkLibrariesFromCommand()
+}
+
 rootProject.name = 'Traderbros'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// Use SETTINGS repos, but don’t forbid project repos entirely
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            name = "ReactAndroid_Prefab"
+            url = "${rootDir}/../node_modules/react-native/ReactAndroid/prefab"
+        }
+    }
+}

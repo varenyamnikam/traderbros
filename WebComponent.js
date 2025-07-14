@@ -4,25 +4,31 @@ import {
   ActivityIndicator,
   Dimensions,
   StyleSheet,
-  Linking,
   PanResponder,
-  Image,
   Text,
+  TouchableOpacity,
+  Animated,
+  Image,
 } from 'react-native';
 import {WebView} from 'react-native-webview';
 
-const {height, width} = Dimensions.get('window');
+const NAVBAR_HEIGHT = 70;
+const NAVBAR_BOTTOM_OFFSET = 30;
+const HIDE_OFFSET = NAVBAR_HEIGHT + NAVBAR_BOTTOM_OFFSET;
 
 const WebComponent = () => {
   const [canGoBack, setCanGoBack] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [error, setError] = useState(null);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [scrollDirection, setScrollDirection] = useState('up');
+
   const webViewRef = useRef(null);
+  const navbarAnimatedValue = useRef(new Animated.Value(0)).current;
 
   const panResponder = PanResponder.create({
-    onMoveShouldSetPanResponder: (evt, gestureState) => {
-      return gestureState.dx > 10 && gestureState.moveX < 50;
-    },
+    onMoveShouldSetPanResponder: (evt, gestureState) =>
+      gestureState.dx > 10 && gestureState.moveX < 50,
     onPanResponderRelease: (evt, gestureState) => {
       if (gestureState.dx > 50 && canGoBack) {
         webViewRef.current?.goBack();
@@ -31,42 +37,68 @@ const WebComponent = () => {
   });
 
   useEffect(() => {
-    console.log('Component mounted');
-    const timer = setTimeout(() => {
-      console.log('Splash screen timer finished');
-      setShowSplash(false);
-    }, 2000);
-
+    const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleShouldStartLoadWithRequest = event => {
-    console.log('Loading URL:', event.url);
-    return true; // Always allow loading inside WebView
-  };
-  
+  useEffect(() => {
+    Animated.timing(navbarAnimatedValue, {
+      toValue: scrollDirection === 'up' ? 0 : HIDE_OFFSET,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [scrollDirection]);
 
-  const handleNavigationStateChange = navState => {
-    console.log('Navigation state:', navState);
+  const handleNavigationStateChange = navState =>
     setCanGoBack(navState.canGoBack);
+
+  const handleError = e => setError(e.nativeEvent.description);
+
+  const injectedJavaScript = `
+    let lastScroll = 0;
+    let ticking = false;
+    function update() {
+      const st = window.pageYOffset || document.documentElement.scrollTop;
+      if (st > lastScroll && st > 50) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ dir: 'down', y: st }));
+      } else if (st < lastScroll) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ dir: 'up', y: st }));
+      }
+      lastScroll = st <= 0 ? 0 : st;
+      ticking = false;
+    }
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(update);
+        ticking = true;
+      }
+    });
+    true;
+  `;
+
+  const handleWebViewMessage = event => {
+    try {
+      const {dir, y} = JSON.parse(event.nativeEvent.data);
+      if (dir !== scrollDirection) setScrollDirection(dir);
+      setLastScrollY(y);
+    } catch {}
   };
 
-  const handleError = syntheticEvent => {
-    const {nativeEvent} = syntheticEvent;
-    console.warn('WebView error:', nativeEvent);
-    setError(nativeEvent.description);
+  const handleNavbarPress = type => {
+    const paths = {
+      home: 'https://traderbros.app',
+      search: 'https://traderbros.app/search',
+      cart: 'https://traderbros.app/cart',
+    };
+    webViewRef.current?.injectJavaScript(
+      `window.location.href='${paths[type]}'`,
+    );
   };
 
   if (showSplash) {
     return (
       <View style={styles.splashContainer}>
-        <Image
-          source={require('./traderbroslogo.png')}
-          style={styles.logo}
-          onError={e =>
-            console.log('Image loading error:', e.nativeEvent.error)
-          }
-        />
+        <Image source={require('./traderbroslogo.png')} style={styles.logo} />
       </View>
     );
   }
@@ -76,29 +108,53 @@ const WebComponent = () => {
       <WebView
         ref={webViewRef}
         source={{uri: 'https://traderbros.app'}}
-        cacheEnabled={true}
-        cacheMode="LOAD_DEFAULT"
-        startInLoadingState={true}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
+        style={styles.webview}
+        cacheEnabled
+        startInLoadingState
+        javaScriptEnabled
+        domStorageEnabled
+        injectedJavaScript={injectedJavaScript}
+        onMessage={handleWebViewMessage}
         onError={handleError}
-        renderError={errorName => (
+        onNavigationStateChange={handleNavigationStateChange}
+        renderLoading={() => (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0A3971" />
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        )}
+        renderError={errName => (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>
-              Error loading content: {errorName}
+              Error loading content: {errName}
             </Text>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            {/* <ActivityIndicator color="#0A3971" size="large" /> */}
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
-        )}
-        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-        onNavigationStateChange={handleNavigationStateChange}
       />
+
+      <Animated.View
+        style={[
+          styles.navbar,
+          {transform: [{translateY: navbarAnimatedValue}]},
+        ]}>
+        {[
+          {type: 'home', icon: require('./assets/grid.png')},
+          {type: 'search', icon: require('./assets/search.png')},
+          {type: 'cart', icon: require('./assets/shoppingCart.png')},
+        ].map(({type, icon}) => (
+          <TouchableOpacity
+            key={type}
+            style={styles.navItem}
+            onPress={() => handleNavbarPress(type)}
+            activeOpacity={0.7}>
+            <Image source={icon} style={styles.navIcon} tintColor="#fff" />
+            {/* <Text style={styles.navText}>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </Text> */}
+          </TouchableOpacity>
+        ))}
+      </Animated.View>
     </View>
   );
 };
@@ -110,38 +166,48 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logo: {
-    width: 200,
-    height: 200,
-    resizeMode: 'contain',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff', // Changed from red to white
-    height: '100%',
-    width: '100%',
-  },
+  logo: {width: 200, height: 200, resizeMode: 'contain'},
+  container: {flex: 1, backgroundColor: '#fff'},
+  webview: {flex: 1},
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
   },
-  loadingText: {
-    marginTop: 10,
-    color: '#0A3971',
-  },
+  loadingText: {marginTop: 10, color: '#0A3971'},
   errorContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginVertical: 5,
+  errorText: {color: 'red', textAlign: 'center', marginVertical: 5},
+  navbar: {
+    position: 'absolute',
+    bottom: NAVBAR_BOTTOM_OFFSET,
+    left: 0,
+    right: 0,
+    height: NAVBAR_HEIGHT,
+    backgroundColor: '#0A3971',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginHorizontal: 20,
+    elevation: 8,
+    shadowOffset: {width: 0, height: -2},
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    zIndex: 1000,
+    borderRadius: 1000,
   },
+  navItem: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+  navIcon: {
+    width: 28,
+    height: 28,
+    marginBottom: 2,
+    resizeMode: 'contain',
+  },
+  navText: {color: '#fff', fontSize: 16, fontWeight: '600'},
 });
 
 export default WebComponent;

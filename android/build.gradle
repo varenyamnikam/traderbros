@@ -10,6 +10,12 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+
+        maven {
+            // so that CMake can find ReactAndroid::jsi
+            url("$rootDir/../node_modules/react-native/ReactAndroid/prefab")
+        }
+
     }
     dependencies {
         classpath("com.android.tools.build:gradle")
