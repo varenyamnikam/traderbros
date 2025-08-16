@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import {WebView} from 'react-native-webview';
 
-const NAVBAR_HEIGHT = 70;
+const NAVBAR_HEIGHT = 50;
 const NAVBAR_BOTTOM_OFFSET = 30;
 const HIDE_OFFSET = NAVBAR_HEIGHT + NAVBAR_BOTTOM_OFFSET;
 
@@ -202,8 +202,8 @@ const styles = StyleSheet.create({
   },
   navItem: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   navIcon: {
-    width: 28,
-    height: 28,
+    width: 20,
+    height: 20,
     marginBottom: 2,
     resizeMode: 'contain',
   },
